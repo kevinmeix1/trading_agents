@@ -180,9 +180,13 @@ function renderBacktest(data) {
   $("#backtest-results").classList.remove("hidden");
   const results = data.results;
 
+  // All strategies share the same dates/sampling, so use the longest curve's
+  // dates as a shared category axis and align each dataset by index.
+  const longest = results.reduce((a, b) => (b.equity_curve.length > a.equity_curve.length ? b : a));
+  const labels = longest.equity_curve.map((p) => p.date);
   const datasets = results.map((r, i) => ({
     label: r.strategy,
-    data: r.equity_curve.map((p) => ({ x: p.date, y: p.value })),
+    data: r.equity_curve.map((p) => p.value),
     borderColor: PALETTE[i % PALETTE.length],
     backgroundColor: PALETTE[i % PALETTE.length] + "22",
     borderWidth: 2,
@@ -194,17 +198,18 @@ function renderBacktest(data) {
   if (equityChart) equityChart.destroy();
   equityChart = new Chart($("#equity-chart"), {
     type: "line",
-    data: { datasets },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      animation: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { labels: { color: "#e6ebf5", usePointStyle: true, font: { size: 12 } } },
-        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: $${c.parsed.y.toLocaleString()}` } },
+        tooltip: { callbacks: { label: (c) => `${c.dataset.label}: $${Number(c.parsed.y).toLocaleString()}` } },
       },
       scales: {
-        x: { type: "category", ticks: { color: "#8b97b3", maxTicksLimit: 8 }, grid: { color: "rgba(255,255,255,0.05)" } },
+        x: { type: "category", ticks: { color: "#8b97b3", maxTicksLimit: 8, autoSkip: true }, grid: { color: "rgba(255,255,255,0.05)" } },
         y: { ticks: { color: "#8b97b3", callback: (v) => "$" + (v / 1000).toFixed(0) + "k" }, grid: { color: "rgba(255,255,255,0.05)" } },
       },
     },
