@@ -19,6 +19,7 @@ from typing import Any
 from rich.console import Console
 
 from trading_agents.agents.analysts import (
+    FlowAnalyst,
     FundamentalAnalyst,
     MacroAnalyst,
     SentimentAnalyst,
@@ -79,24 +80,34 @@ class TradingPipeline:
         self.fundamental = FundamentalAnalyst(self.llm, self.settings)
         self.sentiment = SentimentAnalyst(self.llm, self.settings)
         self.macro = MacroAnalyst(self.llm, self.settings)
+        self.flow = FlowAnalyst(self.llm, self.settings)
         self.debate = ResearchDebate(self.llm, self.settings, rounds=debate_rounds)
-        self.risk = RiskManager(self.llm, self.settings)
+        self.risk = RiskManager(
+            self.llm,
+            self.settings,
+            target_volatility=self.settings.target_volatility,
+            max_position=self.settings.max_position,
+            kelly_fraction=self.settings.kelly_fraction,
+        )
         self.manager = PortfolioManager(self.llm, self.settings)
 
     def _build_graph(self) -> Graph:
-        g = Graph()
+        # The four (now five) analysts are mutually independent, so they form a
+        # single dependency level that the engine can evaluate concurrently.
+        g = Graph(max_workers=self.settings.max_workers)
 
         def ctx(state: dict[str, Any]) -> AgentContext:
             return state["ctx"]
 
-        g.add("technical", lambda s: {"_": self.technical.analyze(ctx(s))})
-        g.add("fundamental", lambda s: {"_": self.fundamental.analyze(ctx(s))})
-        g.add("sentiment", lambda s: {"_": self.sentiment.analyze(ctx(s))})
-        g.add("macro", lambda s: {"_": self.macro.analyze(ctx(s))})
+        g.add("technical", lambda s: {"technical": self.technical.analyze(ctx(s))})
+        g.add("fundamental", lambda s: {"fundamental": self.fundamental.analyze(ctx(s))})
+        g.add("sentiment", lambda s: {"sentiment": self.sentiment.analyze(ctx(s))})
+        g.add("macro", lambda s: {"macro": self.macro.analyze(ctx(s))})
+        g.add("flow", lambda s: {"flow": self.flow.analyze(ctx(s))})
         g.add(
             "debate",
             lambda s: {"_": self.debate.run(ctx(s))},
-            deps=["technical", "fundamental", "sentiment", "macro"],
+            deps=["technical", "fundamental", "sentiment", "macro", "flow"],
         )
         g.add("risk", lambda s: {"_": self.risk.assess(ctx(s))}, deps=["debate"])
         g.add(

@@ -1,6 +1,7 @@
 """Specialised reasoning agents."""
 
 from trading_agents.agents.analysts import (
+    FlowAnalyst,
     FundamentalAnalyst,
     MacroAnalyst,
     SentimentAnalyst,
@@ -25,6 +26,7 @@ __all__ = [
     "TechnicalAnalyst",
     "SentimentAnalyst",
     "MacroAnalyst",
+    "FlowAnalyst",
     "ResearchDebate",
     "RiskManager",
     "PortfolioManager",

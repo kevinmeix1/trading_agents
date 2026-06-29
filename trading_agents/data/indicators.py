@@ -55,6 +55,25 @@ def annualised_volatility(series: pd.Series, window: int = 20) -> float:
     return float(daily.std(ddof=0) * np.sqrt(252))
 
 
+def atr(frame: pd.DataFrame, window: int = 14) -> pd.Series:
+    """Average True Range — a volatility measure used for adaptive stops."""
+
+    high, low, close = frame["high"], frame["low"], frame["close"]
+    prev_close = close.shift(1)
+    true_range = pd.concat(
+        [(high - low), (high - prev_close).abs(), (low - prev_close).abs()],
+        axis=1,
+    ).max(axis=1)
+    return true_range.ewm(alpha=1 / window, adjust=False).mean()
+
+
+def on_balance_volume(close: pd.Series, volume: pd.Series) -> pd.Series:
+    """On-Balance Volume — cumulative volume signed by daily price direction."""
+
+    direction = np.sign(close.diff().fillna(0.0))
+    return (direction * volume).cumsum()
+
+
 @dataclass
 class IndicatorSnapshot:
     """A compact, human-readable summary of the latest technical state.
@@ -73,8 +92,12 @@ class IndicatorSnapshot:
     macd_hist: float
     bb_upper: float
     bb_lower: float
+    bb_pct: float  # position within the Bollinger band, 0=lower .. 1=upper
     pct_from_sma50: float
     annualised_vol: float
+    atr_pct: float  # ATR as a fraction of price (adaptive stop width)
+    volume_ratio: float  # recent volume vs. its longer-run average
+    obv_trend: str  # "accumulation" | "distribution" | "flat"
     trend: str  # "uptrend" | "downtrend" | "sideways"
     momentum: str  # "overbought" | "oversold" | "neutral"
 
@@ -85,7 +108,9 @@ class IndicatorSnapshot:
 def compute_indicators(history: PriceHistory) -> IndicatorSnapshot:
     """Compute a full :class:`IndicatorSnapshot` from a price history."""
 
-    close = history.frame["close"]
+    frame = history.frame
+    close = frame["close"]
+    volume = frame["volume"]
     sma20 = sma(close, 20)
     sma50 = sma(close, 50)
     ema12 = ema(close, 12)
@@ -96,6 +121,27 @@ def compute_indicators(history: PriceHistory) -> IndicatorSnapshot:
     last_close = float(close.iloc[-1])
     last_sma50 = float(sma50.iloc[-1])
     pct_from_sma50 = (last_close - last_sma50) / last_sma50 * 100 if last_sma50 else 0.0
+
+    bb_upper = float(bb["bb_upper"].iloc[-1])
+    bb_lower = float(bb["bb_lower"].iloc[-1])
+    band = bb_upper - bb_lower
+    bb_pct = (last_close - bb_lower) / band if band > 1e-9 else 0.5
+
+    atr_series = atr(frame)
+    atr_pct = float(atr_series.iloc[-1]) / last_close if last_close else 0.0
+
+    recent_vol = float(volume.tail(10).mean())
+    base_vol = float(volume.tail(50).mean()) or 1.0
+    volume_ratio = recent_vol / base_vol if base_vol else 1.0
+
+    obv = on_balance_volume(close, volume)
+    obv_slope = float(obv.iloc[-1] - obv.iloc[max(0, len(obv) - 20)])
+    if obv_slope > 0:
+        obv_trend = "accumulation"
+    elif obv_slope < 0:
+        obv_trend = "distribution"
+    else:
+        obv_trend = "flat"
 
     if float(sma20.iloc[-1]) > last_sma50 * 1.01:
         trend = "uptrend"
@@ -122,10 +168,14 @@ def compute_indicators(history: PriceHistory) -> IndicatorSnapshot:
         macd=round(float(macd_df["macd"].iloc[-1]), 4),
         macd_signal=round(float(macd_df["signal"].iloc[-1]), 4),
         macd_hist=round(float(macd_df["hist"].iloc[-1]), 4),
-        bb_upper=round(float(bb["bb_upper"].iloc[-1]), 4),
-        bb_lower=round(float(bb["bb_lower"].iloc[-1]), 4),
+        bb_upper=round(bb_upper, 4),
+        bb_lower=round(bb_lower, 4),
+        bb_pct=round(bb_pct, 4),
         pct_from_sma50=round(pct_from_sma50, 2),
         annualised_vol=round(annualised_volatility(close), 4),
+        atr_pct=round(atr_pct, 4),
+        volume_ratio=round(volume_ratio, 3),
+        obv_trend=obv_trend,
         trend=trend,
         momentum=momentum,
     )

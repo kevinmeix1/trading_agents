@@ -24,24 +24,36 @@ class RiskManager(BaseAgent):
         max_position: float = 0.30,
         max_asset_vol: float = 0.80,
         min_conviction: float = 0.10,
+        kelly_fraction: float = 0.5,
+        max_drawdown_guard: float = 0.25,
     ):
         super().__init__(llm, settings)
         self.target_volatility = target_volatility
         self.max_position = max_position
         self.max_asset_vol = max_asset_vol
         self.min_conviction = min_conviction
+        self.kelly_fraction = max(0.0, min(1.0, kelly_fraction))
+        self.max_drawdown_guard = max_drawdown_guard
 
     def heuristic(self, ctx: AgentContext) -> dict[str, Any]:
         debate: DebateResult | None = ctx.scratchpad.get("debate")
         conviction = debate.conviction if debate else 0.0
-        vol = max(ctx.indicators.annualised_vol, 1e-6)
+        ind = ctx.indicators
+        vol = max(ind.annualised_vol, 1e-6)
 
         flags: list[str] = []
 
-        # Volatility-targeted base size, scaled by conviction strength.
+        # (1) Volatility-targeted base size, scaled by conviction strength.
         vol_scalar = min(1.0, self.target_volatility / vol)
-        base_size = vol_scalar * abs(conviction)
-        position = min(self.max_position, base_size)
+        vol_target_size = vol_scalar * abs(conviction)
+
+        # (2) Fractional-Kelly size. Treat conviction as an expected excess
+        # return of ``|conviction| * target_volatility`` against a variance of
+        # ``vol**2``; full Kelly is mu / sigma**2. We then scale by the
+        # configured Kelly fraction to temper the notoriously aggressive bet.
+        kelly_full = min(1.0, abs(conviction) * self.target_volatility / (vol**2))
+        blended = (1.0 - self.kelly_fraction) * vol_target_size + self.kelly_fraction * kelly_full
+        position = min(self.max_position, blended)
 
         approved = True
         if abs(conviction) < self.min_conviction:
@@ -54,14 +66,18 @@ class RiskManager(BaseAgent):
         if ctx.memory_notes:
             flags.append("Reviewed prior-trade reflections.")
 
-        # Stops scale with volatility (wider stops in choppier names).
-        stop_loss = min(0.25, max(0.03, vol * 0.5))
+        # Adaptive stops: prefer ATR (true range) when available, else fall back
+        # to annualised volatility. Choppier names automatically get wider stops.
+        atr_pct = getattr(ind, "atr_pct", 0.0) or 0.0
+        stop_basis = atr_pct * 2.5 if atr_pct > 0 else vol * 0.5
+        stop_loss = min(0.25, max(0.03, stop_basis))
         take_profit = min(0.60, stop_loss * 2.0)
 
         rationale = (
-            f"Vol-target sizing: asset vol {vol:.2f} vs target {self.target_volatility:.2f} "
-            f"=> scalar {vol_scalar:.2f}; conviction {conviction:+.2f} => size {position:.2%}. "
-            f"Stop {stop_loss:.0%}, target {take_profit:.0%}."
+            f"Sizing blend (kelly {self.kelly_fraction:.0%}): vol-target {vol_target_size:.2%}, "
+            f"frac-Kelly {self.kelly_fraction * kelly_full:.2%} => {position:.2%}. "
+            f"Asset vol {vol:.2f} vs target {self.target_volatility:.2f}; "
+            f"ATR stop {stop_loss:.0%}, target {take_profit:.0%}."
         )
         return {
             "approved": approved,

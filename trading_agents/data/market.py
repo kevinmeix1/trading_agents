@@ -47,8 +47,14 @@ class SyntheticMarketDataProvider(MarketDataProvider):
 
     def __init__(self, base_seed: int = 42) -> None:
         self.base_seed = base_seed
+        self._cache: dict[tuple[str, int], PriceHistory] = {}
 
     def history(self, symbol: str, *, lookback_days: int = 365) -> PriceHistory:
+        key = (symbol.upper(), max(lookback_days, 30))
+        cached = self._cache.get(key)
+        if cached is not None:
+            return cached
+
         rng = np.random.default_rng(_seed_for(symbol, self.base_seed))
 
         # Per-symbol regime parameters.
@@ -86,7 +92,9 @@ class SyntheticMarketDataProvider(MarketDataProvider):
             },
             index=index,
         )
-        return PriceHistory(symbol=symbol.upper(), frame=frame)
+        history = PriceHistory(symbol=symbol.upper(), frame=frame)
+        self._cache[key] = history
+        return history
 
 
 class YFinanceMarketDataProvider(MarketDataProvider):

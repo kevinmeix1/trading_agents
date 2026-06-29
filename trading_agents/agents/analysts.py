@@ -222,6 +222,72 @@ class SentimentAnalyst(_AnalystBase):
         return system, user
 
 
+class FlowAnalyst(_AnalystBase):
+    """Volume / money-flow analyst.
+
+    Reads order-flow proxies — On-Balance-Volume trend, the relative volume
+    surge, and the position within the Bollinger band — to judge whether price
+    moves are *confirmed* by participation (smart-money accumulation) or are
+    thin and prone to reversal.
+    """
+
+    role = "flow_analyst"
+
+    def heuristic(self, ctx: AgentContext) -> dict[str, Any]:
+        ind = ctx.indicators
+        signal = 0.0
+        points: list[str] = []
+
+        if ind.obv_trend == "accumulation":
+            signal += 0.3
+            points.append("On-balance volume rising (accumulation).")
+        elif ind.obv_trend == "distribution":
+            signal -= 0.3
+            points.append("On-balance volume falling (distribution).")
+
+        # A volume surge amplifies the prevailing trend's conviction.
+        if ind.volume_ratio > 1.3:
+            tilt = 0.2 if ind.trend == "uptrend" else -0.2 if ind.trend == "downtrend" else 0.0
+            signal += tilt
+            points.append(f"Volume surge x{ind.volume_ratio:.2f} confirming {ind.trend}.")
+        elif ind.volume_ratio < 0.7:
+            signal *= 0.6
+            points.append("Thin volume; fade conviction.")
+
+        # Extreme band position is a mean-reversion warning.
+        if ind.bb_pct > 0.95:
+            signal -= 0.15
+            points.append("Price pinned to upper band; stretched.")
+        elif ind.bb_pct < 0.05:
+            signal += 0.15
+            points.append("Price pinned to lower band; washed out.")
+
+        confidence = min(0.85, 0.4 + abs(signal) / 2)
+        rationale = (
+            f"OBV {ind.obv_trend}, rel-volume x{ind.volume_ratio:.2f}, "
+            f"band position {ind.bb_pct:.0%}."
+        )
+        return {
+            "signal": _clamp(signal),
+            "confidence": confidence,
+            "rationale": rationale,
+            "key_points": points,
+        }
+
+    def prompt(self, ctx: AgentContext) -> tuple[str, str]:
+        ind = ctx.indicators
+        system = (
+            "You are a volume / order-flow analyst. Decide whether price action is "
+            "confirmed by participation or likely to reverse. Output signal [-1,1], "
+            "confidence [0,1], rationale, key_points."
+        )
+        user = (
+            f"Symbol: {ind.symbol}\nobv_trend: {ind.obv_trend}\n"
+            f"volume_ratio: {ind.volume_ratio}\nbb_pct: {ind.bb_pct}\ntrend: {ind.trend}"
+        )
+        return system, user
+
+
 class MacroAnalyst(_AnalystBase):
     role = "macro_analyst"
 

@@ -59,6 +59,21 @@ class Settings(BaseSettings):
     # Reproducibility for the synthetic data generator and any sampling.
     random_seed: int = 42
 
+    # --- Performance -------------------------------------------------------
+    # Number of analyst agents to evaluate concurrently. ``1`` keeps the
+    # original sequential, fully-ordered behaviour; higher values overlap the
+    # (I/O-bound) live-LLM calls and are still deterministic thanks to the
+    # graph engine's stable merge order.
+    max_workers: int = Field(default=4, ge=1, le=16)
+
+    # --- Risk policy -------------------------------------------------------
+    # Target portfolio volatility used for vol-targeted position sizing.
+    target_volatility: float = Field(default=0.20, gt=0.0, le=1.0)
+    # Hard cap on any single position as a fraction of equity.
+    max_position: float = Field(default=0.30, gt=0.0, le=1.0)
+    # Fraction of the full-Kelly bet to use (0 disables Kelly blending).
+    kelly_fraction: float = Field(default=0.5, ge=0.0, le=1.0)
+
 
 @lru_cache
 def get_settings() -> Settings:

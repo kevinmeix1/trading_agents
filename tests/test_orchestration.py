@@ -46,7 +46,7 @@ def test_pipeline_end_to_end(settings):
     assert isinstance(result, PipelineResult)
     assert isinstance(result.decision, TradeDecision)
     assert result.decision.action in set(Action)
-    assert len(result.reports) == 4
+    assert len(result.reports) == 5
     assert result.debate is not None
     assert result.risk is not None
 
