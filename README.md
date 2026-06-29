@@ -42,15 +42,17 @@ way a real investment desk does, and make the agents *argue*:
 
 | Technique | Where | What it gives you |
 |---|---|---|
-| **Specialised agent roles** | `agents/analysts.py` | Diverse, decorrelated views (price, value, sentiment, macro) |
+| **Specialised agent roles** | `agents/analysts.py` | Five decorrelated views: price, value, sentiment, macro **and order-flow** |
 | **Adversarial debate** (bull vs bear + judge) | `agents/researchers.py` | Reduces single-model bias; surfaces both sides before committing |
 | **Confidence-weighted aggregation w/ disagreement shrinkage** | `researchers.py` | Conviction is tempered when analysts disagree |
-| **Volatility-targeted position sizing** | `agents/risk.py` | Risk-parity-style sizing instead of fixed bets |
-| **Risk veto + guardrails (stops/targets)** | `agents/risk.py` | The PM *cannot* override a risk rejection |
-| **Graph orchestration (DAG)** | `orchestration/graph.py` | Explicit dependencies, topological execution, testable |
+| **Vol-target + fractional-Kelly sizing** | `agents/risk.py` | Risk-parity sizing blended with a tempered Kelly bet |
+| **ATR-based adaptive stops** | `agents/risk.py` | Stop/target widths scale with each name's true range |
+| **Risk veto + guardrails** | `agents/risk.py` | The PM *cannot* override a risk rejection |
+| **Parallel DAG orchestration** | `orchestration/graph.py` | Independent agents run concurrently; deterministic merge |
 | **Reflection memory** | `memory/store.py` | Agents recall lessons from past resolved trades |
 | **Provider-agnostic LLM layer w/ offline fallback** | `llm/` | Same code runs deterministically offline or on GPT/Claude |
-| **Walk-forward backtester (no look-ahead)** | `backtest/` | Honest evaluation vs Buy&Hold and SMA-crossover |
+| **Walk-forward backtester (no look-ahead)** | `backtest/` | Honest evaluation vs momentum, mean-reversion, ensemble & more |
+| **Service layer + REST API + web dashboard** | `service.py`, `api/`, `web/` | One facade, two transports (CLI + HTTP), a live UI |
 
 ---
 
@@ -71,11 +73,41 @@ trading-agents backtest MSFT --days 500
 trading-agents config
 ```
 
+### Web dashboard + REST API
+
+A modern, buildless dashboard (vanilla JS + Chart.js) and a FastAPI backend ship
+in the box:
+
+```bash
+pip install -e ".[web]"
+trading-agents serve                 # http://127.0.0.1:8000
+```
+
+Open the URL to analyse symbols and run multi-strategy backtests interactively.
+The REST API is self-documenting at `/docs` and exposes:
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/config` | Active configuration |
+| `GET` | `/api/strategies` | Available strategies |
+| `POST` | `/api/analyze` | Run the multi-agent pipeline for a symbol |
+| `POST` | `/api/backtest` | Backtest one or more strategies |
+
+### Architecture document (PDF)
+
+```bash
+pip install -e ".[docs]"
+python docs/generate_architecture_pdf.py   # writes docs/architecture.pdf
+```
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the generated
+[`docs/architecture.pdf`](docs/architecture.pdf) for the full design.
+
 Run the tests:
 
 ```bash
 pip install -e ".[dev]"
-pytest            # 36 tests, all offline & deterministic
+pytest            # 46 tests, all offline & deterministic
 ruff check .
 ```
 
@@ -117,16 +149,19 @@ every agent computes a **complete heuristic decision** first; the LLM is asked t
 whole system is reproducible and CI-friendly with **no API key**.
 
 ### Phase 3 — Analyst agents (`agents/analysts.py`)
-Four agents, each emitting a signal in `[-1, 1]` + confidence + rationale:
+Five agents, each emitting a signal in `[-1, 1]` + confidence + rationale:
 technical, fundamental (pseudo-fundamentals offline), sentiment (scores
-headlines, or a price-confirmed proxy), and macro (volatility regime).
+headlines, or a price-confirmed proxy), macro (volatility regime), and **flow**
+(OBV / relative-volume / Bollinger-position — i.e. is the move *confirmed* by
+participation). They are independent, so the orchestrator runs them concurrently.
 
 ### Phase 4 — Adversarial research + risk + execution
 * `researchers.py` — a **bull** and a **bear** argue over N rounds using the
   analysts' evidence; a judge outputs a net **conviction** (confidence-weighted,
   shrunk by disagreement).
-* `risk.py` — translates conviction + volatility into a **vol-targeted** position
-  size with stops/targets, and can **veto** the trade.
+* `risk.py` — translates conviction + volatility into a position using a blend of
+  **vol-targeting** and **fractional Kelly**, with **ATR-based** stops/targets,
+  and can **veto** the trade.
 * `trader.py` — the Portfolio Manager makes the final call, *bound* by the risk
   mandate.
 
@@ -137,7 +172,9 @@ symbol. A transparent, offline stand-in for a vector store.
 
 ### Phase 6 — Orchestration (`orchestration/`)
 * `graph.py` — a tiny dependency-graph engine (à la LangGraph) that resolves a
-  topological order and threads shared state. Detects cycles & missing deps.
+  topological order, groups nodes into dependency **levels**, and runs each
+  level — executing independent nodes **concurrently** with a deterministic,
+  name-sorted merge. Detects cycles & missing deps.
 * `pipeline.py` — wires the agents into the graph and exposes `analyze()`.
 
 ### Phase 7 — Backtesting (`backtest/`)
@@ -146,11 +183,15 @@ symbol. A transparent, offline stand-in for a vector store.
 * `engine.py` — **walk-forward** simulation that only ever shows a strategy the
   history available up to each decision date (**no look-ahead**).
 * `metrics.py` — total return, CAGR, Sharpe, Sortino, max drawdown, Calmar, win rate.
-* `strategies.py` — `AgentStrategy` (the full pipeline) plus `BuyAndHold` and
-  `MovingAverageCrossover` baselines.
+* `strategies.py` — `AgentStrategy` (the full pipeline) plus `Momentum`,
+  `MeanReversion`, `BollingerBreakout`, a confidence-weighted `Ensemble`, and the
+  `BuyAndHold` / `MovingAverageCrossover` baselines.
 
-### Phase 8 — CLI (`cli.py`)
-A `typer` + `rich` interface: `analyze`, `backtest`, `config`, `version`.
+### Phase 8 — Interfaces (`cli.py`, `service.py`, `api/`, `web/`)
+* `service.py` — a framework-agnostic facade returning JSON-ready dicts.
+* `cli.py` — a `typer` + `rich` interface: `analyze`, `backtest`, `serve`,
+  `config`, `version`.
+* `api/` + `web/` — a FastAPI backend serving a modern, buildless dashboard.
 
 ---
 
@@ -180,6 +221,11 @@ pip install -e ".[data]"
 export TA_DATA_SOURCE=yfinance
 ```
 
+**Everything (data + LLMs + web + docs):**
+```bash
+pip install -e ".[all]"
+```
+
 If a live provider is selected but its key is missing, the system **degrades
 gracefully** back to offline mode instead of crashing.
 
@@ -189,16 +235,20 @@ gracefully** back to offline mode instead of crashing.
 
 ```
 trading_agents/
-├── config.py              # settings (pydantic)
-├── data/                  # market data + indicators
+├── config.py              # settings (pydantic): provider, risk policy, workers
+├── data/                  # market data + indicators (incl. ATR, OBV, flow)
 ├── llm/                   # provider-agnostic chat (offline/openai/anthropic)
-├── agents/                # analysts, debate, risk, trader + typed schemas
+├── agents/                # 5 analysts, debate, risk, trader + typed schemas
 ├── memory/                # reflection memory
-├── orchestration/         # graph engine + trading pipeline
+├── orchestration/         # parallel DAG engine + trading pipeline
 ├── backtest/              # portfolio, engine, metrics, strategies
-└── cli.py                 # typer CLI
+├── service.py             # framework-agnostic facade (JSON-ready results)
+├── api/                   # FastAPI app (REST endpoints + static hosting)
+├── web/                   # buildless dashboard (index.html, app.js, styles.css)
+└── cli.py                 # typer CLI (analyze, backtest, serve, config)
+docs/                      # ARCHITECTURE.md + reproducible architecture PDF
 examples/run_pipeline.py   # end-to-end demo
-tests/                     # 36 offline, deterministic tests
+tests/                     # 46 offline, deterministic tests
 ```
 
 ---
