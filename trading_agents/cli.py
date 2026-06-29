@@ -147,6 +147,27 @@ def backtest(
 
 
 @app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", help="Interface to bind."),
+    port: int = typer.Option(8000, help="Port to listen on."),
+) -> None:
+    """Launch the web dashboard + REST API (requires the ``web`` extra)."""
+
+    from trading_agents.api import run
+
+    console.print(
+        Panel(
+            f"Starting the trading_agents dashboard on "
+            f"[bold cyan]http://{host}:{port}[/bold cyan]\n"
+            "Open it in your browser to analyse symbols and run backtests.",
+            title="trading_agents serve",
+            border_style="cyan",
+        )
+    )
+    run(host=host, port=port)
+
+
+@app.command()
 def config() -> None:
     """Show the active configuration."""
 
