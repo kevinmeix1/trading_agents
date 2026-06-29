@@ -100,7 +100,11 @@ def backtest(
     from trading_agents.backtest import (
         AgentStrategy,
         Backtester,
+        BollingerBreakoutStrategy,
         BuyAndHold,
+        EnsembleStrategy,
+        MeanReversionStrategy,
+        MomentumStrategy,
         MovingAverageCrossover,
     )
     from trading_agents.data.market import get_market_provider
@@ -112,7 +116,14 @@ def backtest(
 
     strategies = [AgentStrategy(TradingPipeline(settings))]
     if compare:
-        strategies += [MovingAverageCrossover(), BuyAndHold()]
+        strategies += [
+            MomentumStrategy(),
+            MeanReversionStrategy(),
+            BollingerBreakoutStrategy(),
+            EnsembleStrategy(),
+            MovingAverageCrossover(),
+            BuyAndHold(),
+        ]
 
     table = Table(title=f"Backtest — {symbol.upper()} ({days}d)")
     for col in ("Strategy", "Total", "CAGR", "Sharpe", "Sortino", "MaxDD", "WinRate", "Trades"):

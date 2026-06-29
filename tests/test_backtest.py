@@ -3,10 +3,19 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+from trading_agents.agents.schemas import Action
 from trading_agents.backtest.engine import Backtester
 from trading_agents.backtest.metrics import compute_metrics
 from trading_agents.backtest.portfolio import Portfolio
-from trading_agents.backtest.strategies import AgentStrategy, BuyAndHold, MovingAverageCrossover
+from trading_agents.backtest.strategies import (
+    AgentStrategy,
+    BollingerBreakoutStrategy,
+    BuyAndHold,
+    EnsembleStrategy,
+    MeanReversionStrategy,
+    MomentumStrategy,
+    MovingAverageCrossover,
+)
 from trading_agents.orchestration.pipeline import TradingPipeline
 
 
@@ -55,6 +64,35 @@ def test_backtester_runs_all_strategies(history, settings):
         result = engine.run(history, strat)
         assert len(result.equity_curve) == len(history)
         assert result.metrics.num_days == len(history)
+
+
+def test_new_strategies_emit_valid_decisions(history):
+    strategies = [
+        MomentumStrategy(),
+        MeanReversionStrategy(),
+        BollingerBreakoutStrategy(),
+        EnsembleStrategy(),
+    ]
+    for strat in strategies:
+        decision = strat.decide(history)
+        assert decision.action in set(Action)
+        assert 0.0 <= decision.target_weight <= 1.0
+        assert 0.0 <= decision.confidence <= 1.0
+
+
+def test_new_strategies_backtest_runs(history):
+    engine = Backtester(rebalance_every=21, warmup=60)
+    for strat in (MomentumStrategy(), MeanReversionStrategy(), EnsembleStrategy()):
+        result = engine.run(history, strat)
+        assert len(result.equity_curve) == len(history)
+        assert result.metrics.num_days == len(history)
+
+
+def test_ensemble_is_deterministic(history):
+    a = EnsembleStrategy().decide(history)
+    b = EnsembleStrategy().decide(history)
+    assert a.action == b.action
+    assert a.target_weight == b.target_weight
 
 
 def test_backtest_no_lookahead(history, settings):
