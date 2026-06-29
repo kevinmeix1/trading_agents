@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from trading_agents.backtest import (
+from stock_trading_agent.backtest import (
     AgentStrategy,
     Backtester,
     BollingerBreakoutStrategy,
@@ -14,10 +14,10 @@ from trading_agents.backtest import (
     MeanReversionStrategy,
     MomentumStrategy,
 )
-from trading_agents.config import Settings
-from trading_agents.data.market import get_market_provider
-from trading_agents.orchestration import TradingPipeline
-from trading_agents.service import TradingService
+from stock_trading_agent.config import Settings
+from stock_trading_agent.data.market import get_market_provider
+from stock_trading_agent.orchestration import TradingPipeline
+from stock_trading_agent.service import TradingService
 
 
 def main() -> None:

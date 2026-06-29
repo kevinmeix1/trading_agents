@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from trading_agents.config import LLMProvider, Settings
-from trading_agents.llm.base import Message, extract_json
-from trading_agents.llm.factory import get_chat_model
-from trading_agents.llm.offline import OfflineChatModel
+from stock_trading_agent.config import LLMProvider, Settings
+from stock_trading_agent.llm.base import Message, extract_json
+from stock_trading_agent.llm.factory import get_chat_model
+from stock_trading_agent.llm.offline import OfflineChatModel
 
 
 def test_extract_json_plain():
@@ -46,7 +46,7 @@ def test_structured_backfills_missing_keys():
 
         def structured(self, *, system, user, fallback, temperature=None):
             # Use the base-class implementation to exercise JSON parsing/merge.
-            from trading_agents.llm.base import ChatModel
+            from stock_trading_agent.llm.base import ChatModel
 
             return ChatModel.structured(
                 self, system=system, user=user, fallback=fallback, temperature=temperature

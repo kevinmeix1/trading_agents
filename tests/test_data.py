@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from trading_agents.data.indicators import compute_indicators, rsi
-from trading_agents.data.market import SyntheticMarketDataProvider
-from trading_agents.data.types import PriceHistory
+from stock_trading_agent.data.indicators import compute_indicators, rsi
+from stock_trading_agent.data.market import SyntheticMarketDataProvider
+from stock_trading_agent.data.types import PriceHistory
 
 
 def test_synthetic_is_deterministic():

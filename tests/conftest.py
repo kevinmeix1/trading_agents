@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from trading_agents.config import Settings
-from trading_agents.data.market import SyntheticMarketDataProvider
+from stock_trading_agent.config import Settings
+from stock_trading_agent.data.market import SyntheticMarketDataProvider
 
 
 @pytest.fixture

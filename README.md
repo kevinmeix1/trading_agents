@@ -1,16 +1,35 @@
-# trading_agents
+# Stock Trading Agent
 
-An **advanced multi-agent AI system for financial trading research**. A team of
-specialised LLM-backed agents independently analyse an asset, **debate** the bull
-and bear cases, size the position under a **risk mandate**, and produce a single
-actionable trade decision — which you can then **backtest** against baselines.
+> **A multi-agent AI trading desk for stock research.** Import name:
+> `stock_trading_agent` · CLI / package: `stock-trading-agent`.
 
-> ⚠️ **Educational/research project.** Nothing here is investment advice. The
+**Stock Trading Agent** is an advanced, multi-agent AI system for **stock
+trading research**. A team of specialised LLM-backed agents independently
+analyse a stock from different angles, **debate** the bull and bear cases, size
+the position under a hard **risk mandate**, and produce a single actionable trade
+decision — which you can then **backtest** against classic strategies. It ships
+with a **REST API** and a **web dashboard** for interactive use.
+
+> ⚠️ **Educational / research project.** Nothing here is investment advice. The
 > default data is *synthetic*. Do not trade real money based on this code.
 
 It runs **fully offline and deterministically** out of the box (no API keys, no
 network), and transparently upgrades to live LLMs (OpenAI / Anthropic) and live
 market data (yfinance) by changing configuration only.
+
+### What you get
+
+- 🧠 **Five specialised analysts** (technical, fundamental, sentiment, macro,
+  order-flow) that run **concurrently** and produce decorrelated views.
+- 🥊 **Adversarial bull-vs-bear debate** with a judge that yields a calibrated
+  conviction.
+- 🛡️ **Risk officer** with volatility-targeted + fractional-Kelly sizing,
+  ATR-based stops, and a hard veto the portfolio manager cannot override.
+- 📈 **Walk-forward backtester** (no look-ahead) with momentum, mean-reversion,
+  Bollinger-breakout, ensemble, SMA-crossover and buy-and-hold baselines.
+- 🌐 **FastAPI backend + modern web dashboard** (charts, analyst signal bars,
+  debate, risk, and multi-strategy equity curves).
+- 📄 **Reproducible architecture PDF** generated from code.
 
 ---
 
@@ -64,13 +83,13 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e .            # core (offline mode works immediately)
 
 # 2. Analyse a symbol (uses synthetic data, no keys needed)
-trading-agents analyze AAPL
+stock-trading-agent analyze AAPL
 
 # 3. Backtest the agent strategy vs baselines
-trading-agents backtest MSFT --days 500
+stock-trading-agent backtest MSFT --days 500
 
 # 4. Inspect the active configuration
-trading-agents config
+stock-trading-agent config
 ```
 
 ### Web dashboard + REST API
@@ -80,7 +99,7 @@ in the box:
 
 ```bash
 pip install -e ".[web]"
-trading-agents serve                 # http://127.0.0.1:8000
+stock-trading-agent serve                 # http://127.0.0.1:8000
 ```
 
 Open the URL to analyse symbols and run multi-strategy backtests interactively.
@@ -114,8 +133,8 @@ ruff check .
 Or drive it from Python:
 
 ```python
-from trading_agents.config import Settings
-from trading_agents.orchestration import TradingPipeline
+from stock_trading_agent.config import Settings
+from stock_trading_agent.orchestration import TradingPipeline
 
 pipeline = TradingPipeline(Settings(verbose=True))
 result = pipeline.analyze("AAPL", news=["beats earnings, record growth"])
@@ -133,7 +152,7 @@ designed. Each phase is independently useful and testable.
 ### Phase 0 — Configuration (`config.py`)
 A single `pydantic-settings` object reads everything from env vars / `.env`,
 with safe defaults so the system runs with zero config. Switch backends here:
-`TA_LLM_PROVIDER`, `TA_DATA_SOURCE`, etc.
+`STA_LLM_PROVIDER`, `STA_DATA_SOURCE`, etc.
 
 ### Phase 1 — Data layer (`data/`)
 * `market.py` — a `MarketDataProvider` interface with two backends: a
@@ -202,23 +221,23 @@ Everything below is **optional**. Copy `.env.example` to `.env` and edit:
 **Live LLM reasoning (OpenAI):**
 ```bash
 pip install -e ".[openai]"
-export TA_LLM_PROVIDER=openai
-export TA_LLM_MODEL=gpt-4o-mini
+export STA_LLM_PROVIDER=openai
+export STA_LLM_MODEL=gpt-4o-mini
 export OPENAI_API_KEY=sk-...
 ```
 
 **Live LLM reasoning (Anthropic):**
 ```bash
 pip install -e ".[anthropic]"
-export TA_LLM_PROVIDER=anthropic
-export TA_LLM_MODEL=claude-3-5-sonnet-latest
+export STA_LLM_PROVIDER=anthropic
+export STA_LLM_MODEL=claude-3-5-sonnet-latest
 export ANTHROPIC_API_KEY=...
 ```
 
 **Real market data:**
 ```bash
 pip install -e ".[data]"
-export TA_DATA_SOURCE=yfinance
+export STA_DATA_SOURCE=yfinance
 ```
 
 **Everything (data + LLMs + web + docs):**
@@ -234,7 +253,7 @@ gracefully** back to offline mode instead of crashing.
 ## Project layout
 
 ```
-trading_agents/
+stock_trading_agent/
 ├── config.py              # settings (pydantic): provider, risk policy, workers
 ├── data/                  # market data + indicators (incl. ATR, OBV, flow)
 ├── llm/                   # provider-agnostic chat (offline/openai/anthropic)

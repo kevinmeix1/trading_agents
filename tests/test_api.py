@@ -5,8 +5,8 @@ import pytest
 pytest.importorskip("fastapi")
 from fastapi.testclient import TestClient  # noqa: E402
 
-from trading_agents.api import create_app  # noqa: E402
-from trading_agents.service import TradingService  # noqa: E402
+from stock_trading_agent.api import create_app  # noqa: E402
+from stock_trading_agent.service import TradingService  # noqa: E402
 
 
 @pytest.fixture

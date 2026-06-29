@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from trading_agents.agents.schemas import Action
-from trading_agents.backtest.engine import Backtester
-from trading_agents.backtest.metrics import compute_metrics
-from trading_agents.backtest.portfolio import Portfolio
-from trading_agents.backtest.strategies import (
+from stock_trading_agent.agents.schemas import Action
+from stock_trading_agent.backtest.engine import Backtester
+from stock_trading_agent.backtest.metrics import compute_metrics
+from stock_trading_agent.backtest.portfolio import Portfolio
+from stock_trading_agent.backtest.strategies import (
     AgentStrategy,
     BollingerBreakoutStrategy,
     BuyAndHold,
@@ -16,7 +16,7 @@ from trading_agents.backtest.strategies import (
     MomentumStrategy,
     MovingAverageCrossover,
 )
-from trading_agents.orchestration.pipeline import TradingPipeline
+from stock_trading_agent.orchestration.pipeline import TradingPipeline
 
 
 def test_metrics_on_known_curve():

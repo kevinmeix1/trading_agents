@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from trading_agents.agents.schemas import Action, TradeDecision
-from trading_agents.orchestration.graph import Graph
-from trading_agents.orchestration.pipeline import PipelineResult, TradingPipeline
+from stock_trading_agent.agents.schemas import Action, TradeDecision
+from stock_trading_agent.orchestration.graph import Graph
+from stock_trading_agent.orchestration.pipeline import PipelineResult, TradingPipeline
 
 
 def test_graph_topological_order():

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from trading_agents.agents.analysts import (
+from stock_trading_agent.agents.analysts import (
     FundamentalAnalyst,
     MacroAnalyst,
     SentimentAnalyst,
     TechnicalAnalyst,
 )
-from trading_agents.agents.base import AgentContext
-from trading_agents.agents.researchers import ResearchDebate
-from trading_agents.agents.risk import RiskManager
-from trading_agents.agents.schemas import Action, AnalystReport
-from trading_agents.agents.trader import PortfolioManager
-from trading_agents.data.indicators import compute_indicators
-from trading_agents.llm.offline import OfflineChatModel
+from stock_trading_agent.agents.base import AgentContext
+from stock_trading_agent.agents.researchers import ResearchDebate
+from stock_trading_agent.agents.risk import RiskManager
+from stock_trading_agent.agents.schemas import Action, AnalystReport
+from stock_trading_agent.agents.trader import PortfolioManager
+from stock_trading_agent.data.indicators import compute_indicators
+from stock_trading_agent.llm.offline import OfflineChatModel
 
 
 def _ctx(history, settings, news=None):

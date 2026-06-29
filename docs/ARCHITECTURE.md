@@ -1,11 +1,11 @@
-# trading_agents — Architecture
+# stock_trading_agent — Architecture
 
 > Educational / research project. Nothing here is investment advice. Default
 > data is synthetic and the system runs fully offline and deterministically.
 
 ## 1. Overview
 
-`trading_agents` decomposes the question *"should I trade this asset?"* the way a
+`stock_trading_agent` decomposes the question *"should I trade this asset?"* the way a
 real investment desk does: a team of specialised agents independently analyse an
 asset, two researchers **debate** the bull and bear cases, a **risk** officer
 sizes the position under a hard mandate, and a **portfolio manager** issues the
@@ -91,7 +91,7 @@ crossover and buy-and-hold baselines.
 
 ## 7. Interfaces
 
-* **CLI** (`trading-agents`): `analyze`, `backtest`, `serve`, `config`, `version`.
+* **CLI** (`stock-trading-agent`): `analyze`, `backtest`, `serve`, `config`, `version`.
 * **REST API** (`api/`): FastAPI app with typed request models.
 * **Web dashboard** (`web/`): a buildless single-page app (vanilla JS +
   Chart.js) for interactive analysis and backtesting.

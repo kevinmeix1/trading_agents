@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from trading_agents.memory.store import MemoryRecord, ReflectionMemory
+from stock_trading_agent.memory.store import MemoryRecord, ReflectionMemory
 
 
 def test_record_and_recall(tmp_path):

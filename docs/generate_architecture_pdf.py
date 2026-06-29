@@ -194,13 +194,13 @@ def build(out: Path | str = OUT) -> Path:
     doc = SimpleDocTemplate(
         str(out), pagesize=A4,
         leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm, bottomMargin=16 * mm,
-        title="trading_agents — Architecture", author="trading_agents",
+        title="stock_trading_agent — Architecture", author="stock_trading_agent",
     )
     story: list = []
 
     # --- Cover ---
     story.append(Spacer(1, 55 * mm))
-    story.append(Paragraph("trading_agents", ss["CoverTitle"]))
+    story.append(Paragraph("stock_trading_agent", ss["CoverTitle"]))
     story.append(Paragraph("Multi-Agent AI Trading System — Architecture", ss["CoverSub"]))
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(
@@ -216,7 +216,7 @@ def build(out: Path | str = OUT) -> Path:
     # --- 1. Overview ---
     story.append(Paragraph("1. System Overview", ss["H1"]))
     story.append(Paragraph(
-        "<b>trading_agents</b> decomposes the question &ldquo;should I trade this "
+        "<b>stock_trading_agent</b> decomposes the question &ldquo;should I trade this "
         "asset?&rdquo; the way an investment desk does. Specialised agents form "
         "independent views, two researchers debate the bull and bear cases, a risk "
         "officer sizes the position under a hard mandate, and a portfolio manager "
